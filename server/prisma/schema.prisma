@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. Users who log in via GitHub
+model User {
+  id          String   @id @default(uuid())
+  githubId    String   @unique
+  username    String
+  email       String?
+  avatarUrl   String?
+  accessToken String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  repositories Repository[]
+}
+
+// 2. Repositories the user has enabled for AI review
+model Repository {
+  id            String   @id @default(uuid())
+  userId        String
+  githubRepoId  Int      @unique
+  fullName      String
+  defaultBranch String   @default("main")
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewJobs ReviewJob[]
+}
+
+// 3. Every time a PR is reviewed, we create a Job
+model ReviewJob {
+  id           String    @id @default(uuid())
+  repositoryId String
+  prNumber     Int
+  headSha      String
+  status       JobStatus @default(QUEUED)
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  repository Repository      @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  comments   ReviewComment[]
+
+  // Prevent duplicate jobs for the exact same commit
+  @@unique([repositoryId, prNumber, headSha])
+}
+
+// 4. The actual AI-generated comments
+model ReviewComment {
+  id         String   @id @default(uuid())
+  reviewJobId String
+  filePath   String
+  lineNumber Int
+  severity   Severity
+  body       String
+  createdAt  DateTime @default(now())
+
+  reviewJob ReviewJob @relation(fields: [reviewJobId], references: [id], onDelete: Cascade)
+}
+
+// Job processing status
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// AI review severity
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}

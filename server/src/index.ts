@@ -1,8 +1,8 @@
+import "dotenv/config";
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
+import prisma from "./lib/db";
 
 const app = express();
 
@@ -21,6 +21,26 @@ app.get("/health", (req, res) => {
     service: "ai-code-reviewer-api",
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get("/db-health", async (req, res) => {
+  try {
+    await prisma.$connect();
+
+    res.json({
+      status: "ok",
+      database: "connected",
+      message: "Successfully connected to PostgreSQL",
+    });
+  } catch (error) {
+    console.error("Database connection failed:", error);
+
+    res.status(500).json({
+      status: "error",
+      database: "disconnected",
+      message: "Failed to connect to PostgreSQL",
+    });
+  }
 });
 
 const PORT = process.env.PORT || 4000;
