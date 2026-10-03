@@ -2,12 +2,17 @@ import "dotenv/config";
 
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+
 import prisma from "./lib/db";
+import authRoutes from "./routes/auth";
+import { protectRoute } from "./middleware/auth";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.json({
@@ -41,6 +46,17 @@ app.get("/db-health", async (req, res) => {
       message: "Failed to connect to PostgreSQL",
     });
   }
+});
+
+// GitHub OAuth routes
+app.use("/auth", authRoutes);
+
+// Protected test route
+app.get("/me", protectRoute, (req, res) => {
+  res.json({
+    message: "You are authenticated!",
+    user: req.user,
+  });
 });
 
 const PORT = process.env.PORT || 4000;
