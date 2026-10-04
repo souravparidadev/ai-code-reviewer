@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 
 import prisma from "./lib/db";
 import authRoutes from "./routes/auth";
+import repoRoutes from "./routes/repos";
 import { protectRoute } from "./middleware/auth";
 
 const app = express();
@@ -51,13 +52,16 @@ app.get("/db-health", async (req, res) => {
 // GitHub OAuth routes
 app.use("/auth", authRoutes);
 
-// Protected test route
+// Protected authentication test route
 app.get("/me", protectRoute, (req, res) => {
   res.json({
     message: "You are authenticated!",
     user: req.user,
   });
 });
+
+// Protected repository routes
+app.use("/api/repos", protectRoute, repoRoutes);
 
 const PORT = process.env.PORT || 4000;
 
