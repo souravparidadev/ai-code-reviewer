@@ -34,3 +34,44 @@ export async function fetchUserRepositories(userId: string) {
     updatedAt: repo.updated_at,
   }));
 }
+
+export async function getPullRequest(
+  userId: string,
+  owner: string,
+  repo: string,
+  pullNumber: number
+) {
+  const octokit = await getOctokitForUser(userId);
+
+  const response = await octokit.request(
+    "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+    {
+      owner,
+      repo,
+      pull_number: pullNumber,
+    }
+  );
+
+  return response.data;
+}
+
+export async function getPullRequestFiles(
+  userId: string,
+  owner: string,
+  repo: string,
+  pullNumber: number
+) {
+  const octokit = await getOctokitForUser(userId);
+
+  const response = await octokit.request(
+    "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
+    {
+      owner,
+      repo,
+      pull_number: pullNumber,
+      per_page: 100,
+    }
+  );
+
+  return response.data;
+}

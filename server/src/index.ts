@@ -7,12 +7,21 @@ import cookieParser from "cookie-parser";
 import prisma from "./lib/db";
 import authRoutes from "./routes/auth";
 import repoRoutes from "./routes/repos";
+import webhookRoutes from "./routes/webhook";
 import { protectRoute } from "./middleware/auth";
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+
+app.use(
+  express.json({
+    verify: (req: any, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
+
 app.use(cookieParser());
 
 app.get("/", (req, res) => {
@@ -51,6 +60,9 @@ app.get("/db-health", async (req, res) => {
 
 // GitHub OAuth routes
 app.use("/auth", authRoutes);
+
+// GitHub webhook routes
+app.use("/webhooks", webhookRoutes);
 
 // Protected authentication test route
 app.get("/me", protectRoute, (req, res) => {
