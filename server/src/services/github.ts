@@ -7,7 +7,9 @@ export async function getOctokitForUser(userId: string) {
   });
 
   if (!user || !user.accessToken) {
-    throw new Error("User not found or missing GitHub access token");
+    throw new Error(
+      "User not found or missing GitHub access token"
+    );
   }
 
   const { Octokit } = await import("@octokit/rest");
@@ -17,14 +19,20 @@ export async function getOctokitForUser(userId: string) {
   });
 }
 
-export async function fetchUserRepositories(userId: string) {
+export async function fetchUserRepositories(
+  userId: string
+) {
   const octokit = await getOctokitForUser(userId);
 
-  const response = await octokit.request("GET /user/repos", {
-    per_page: 100,
-    sort: "updated",
-    affiliation: "owner,collaborator,organization_member",
-  });
+  const response = await octokit.request(
+    "GET /user/repos",
+    {
+      per_page: 100,
+      sort: "updated",
+      affiliation:
+        "owner,collaborator,organization_member",
+    }
+  );
 
   return response.data.map((repo) => ({
     githubRepoId: Number(repo.id),
@@ -76,3 +84,24 @@ export async function getPullRequestFiles(
   return response.data;
 }
 
+export async function postPullRequestComment(
+  userId: string,
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  body: string
+) {
+  const octokit = await getOctokitForUser(userId);
+
+  const response = await octokit.request(
+    "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+    {
+      owner,
+      repo,
+      issue_number: pullNumber,
+      body,
+    }
+  );
+
+  return response.data;
+}
