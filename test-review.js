@@ -5,3 +5,4 @@ function getUserName(user) {
 const user = null;
 
 console.log(getUserName(user));
+console.log("Testing AI code reviewer");
