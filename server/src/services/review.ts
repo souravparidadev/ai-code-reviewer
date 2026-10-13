@@ -8,7 +8,7 @@ export type ChangedFile = {
 
 export function prepareDiff(files: ChangedFile[]) {
   return files
-    .filter((file) => file.patch)
+    .filter((file) => !file.patch)
     .map((file) => {
       return `
 FILE: ${file.filename}

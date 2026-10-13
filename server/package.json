@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "dev": "tsx watch src/index.ts",
-  "worker": "tsx src/workers/reviewWorker.ts",
-  "build": "tsc",
-  "start": "node dist/index.js"
-},
+    "dev": "tsx watch src/index.ts",
+    "worker": "tsx src/workers/reviewWorker.ts",
+    "index-worker": "tsx src/workers/indexWorker.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
@@ -20,7 +21,9 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@google/genai": "^2.28.0",
     "@octokit/rest": "^22.0.1",
+    "@pinecone-database/pinecone": "^8.2.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "axios": "^1.20.0",
@@ -36,4 +39,3 @@
     "zod": "^4.6.5"
   }
 }
-

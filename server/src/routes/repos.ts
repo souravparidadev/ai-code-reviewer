@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { fetchUserRepositories } from "../services/github";
+import { indexQueue } from "../queues/indexQueue";
 
 const router = Router();
 
@@ -98,9 +99,16 @@ router.post("/enable", async (req: Request, res: Response) => {
       },
     });
 
+    // Queue repository for RAG indexing.
+    // The actual indexing happens in indexWorker.ts.
+    await indexQueue.add("index-repository", {
+      repositoryId: repository.id,
+    });
+
     res.json({
       message: "Repository enabled successfully",
       repository,
+      indexing: "queued",
     });
   } catch (error: any) {
     console.error("❌ Enable Repo Error:", error.message);
