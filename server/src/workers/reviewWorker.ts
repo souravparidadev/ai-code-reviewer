@@ -10,6 +10,7 @@ import {
 } from "../services/github";
 
 import { reviewCode } from "../services/ai";
+import { retrieveRelevantCode } from "../services/retrieval";
 
 const redisUrl =
   process.env.REDIS_URL || "redis://localhost:6379";
@@ -30,9 +31,7 @@ const reviewWorker = new Worker(
     // --------------------------------------------------
 
     if (!payload?.repository || !payload?.pull_request) {
-      console.log(
-        "⚠️ Invalid pull request payload"
-      );
+      console.log("⚠️ Invalid pull request payload");
 
       return {
         success: false,
@@ -40,9 +39,7 @@ const reviewWorker = new Worker(
       };
     }
 
-    const githubRepoId = Number(
-      payload.repository.id
-    );
+    const githubRepoId = Number(payload.repository.id);
 
     const owner =
       payload.repository.owner.login;
@@ -82,6 +79,7 @@ const reviewWorker = new Worker(
         where: {
           githubRepoId,
         },
+
         include: {
           user: true,
         },
@@ -200,7 +198,7 @@ const reviewWorker = new Worker(
       );
 
       // --------------------------------------------------
-      // 7. Review each changed file with Gemini
+      // 7. Review each changed file with Gemini + RAG
       // --------------------------------------------------
 
       let totalComments = 0;
@@ -281,13 +279,58 @@ const reviewWorker = new Worker(
         );
 
         // --------------------------------------------------
-        // Send file patch to Gemini
+        // RAG: Retrieve relevant repository context
         // --------------------------------------------------
+
+        console.log(
+          "🔎 Searching Pinecone for relevant repository context..."
+        );
+
+        const relevantContext =
+          await retrieveRelevantCode(
+            repository.id,
+            `${file.filename}\n${file.patch}`,
+            3
+          );
+
+        if (relevantContext) {
+          console.log(
+            "📚 Relevant repository context retrieved"
+          );
+        } else {
+          console.log(
+            "📭 No relevant repository context found"
+          );
+        }
+
+        // --------------------------------------------------
+        // Build context for Gemini
+        // --------------------------------------------------
+
+        const reviewInput = relevantContext
+          ? [
+              "RELEVANT EXISTING REPOSITORY CODE:",
+              "",
+              relevantContext,
+              "",
+              "CURRENT PULL REQUEST DIFF:",
+              "",
+              file.patch,
+            ].join("\n")
+          : file.patch;
+
+        // --------------------------------------------------
+        // Send diff + repository context to Gemini
+        // --------------------------------------------------
+
+        console.log(
+          "🤖 Sending diff + RAG context to Gemini..."
+        );
 
         const aiResult =
           await reviewCode(
             file.filename,
-            file.patch
+            reviewInput
           );
 
         console.log(
