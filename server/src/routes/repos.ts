@@ -15,10 +15,8 @@ router.get("/", async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Fetch repositories from GitHub
     const githubRepos = await fetchUserRepositories(req.user.userId);
 
-    // 2. Fetch repositories already enabled in our database
     const enabledRepos = await prisma.repository.findMany({
       where: {
         userId: req.user.userId,
@@ -28,14 +26,10 @@ router.get("/", async (req: Request, res: Response) => {
       },
     });
 
-    // Prisma may return githubRepoId as bigint.
-    // Convert everything to Number so it matches GitHub's repo ID.
     const enabledRepoIds = new Set(
       enabledRepos.map((repo) => Number(repo.githubRepoId))
     );
 
-    // 3. Combine GitHub repository data
-    // with our application's enabled status
     const repositories = githubRepos.map((repo) => ({
       ...repo,
       isEnabled: enabledRepoIds.has(Number(repo.githubRepoId)),
@@ -69,16 +63,12 @@ router.post("/enable", async (req: Request, res: Response) => {
       defaultBranch,
     } = req.body;
 
-    // Validate required fields
     if (!githubRepoId || !fullName) {
       return res.status(400).json({
         error: "Missing repository details",
       });
     }
 
-    // Upsert means:
-    // - Create repository if it doesn't exist
-    // - Update it if it already exists
     const repository = await prisma.repository.upsert({
       where: {
         githubRepoId: Number(githubRepoId),
@@ -99,8 +89,6 @@ router.post("/enable", async (req: Request, res: Response) => {
       },
     });
 
-    // Queue repository for RAG indexing.
-    // The actual indexing happens in indexWorker.ts.
     await indexQueue.add("index-repository", {
       repositoryId: repository.id,
     });
@@ -131,15 +119,12 @@ router.post("/disable", async (req: Request, res: Response) => {
 
     const { githubRepoId } = req.body;
 
-    // Validate repository ID
     if (!githubRepoId) {
       return res.status(400).json({
         error: "Missing githubRepoId",
       });
     }
 
-    // Delete only the repository belonging to the logged-in user.
-    // This is important for security.
     await prisma.repository.deleteMany({
       where: {
         githubRepoId: Number(githubRepoId),
@@ -158,5 +143,73 @@ router.post("/disable", async (req: Request, res: Response) => {
     });
   }
 });
+
+// GET /api/repos/:repositoryId/reviews
+// Get recent AI reviews for a repository
+router.get(
+  "/:repositoryId/reviews",
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          error: "Unauthorized",
+        });
+      }
+
+      const repositoryId = Array.isArray(req.params.repositoryId)
+  ? req.params.repositoryId[0]
+  : req.params.repositoryId;
+
+      const repository = await prisma.repository.findFirst({
+        where: {
+          id: repositoryId,
+          userId: req.user.userId,
+        },
+      });
+
+      if (!repository) {
+        return res.status(404).json({
+          error: "Repository not found",
+        });
+      }
+
+      const reviews = await prisma.reviewJob.findMany({
+        where: {
+          repositoryId: repository.id,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 20,
+        include: {
+          _count: {
+            select: {
+              comments: true,
+            },
+          },
+        },
+      });
+
+      res.json({
+        reviews: reviews.map((review) => ({
+          id: review.id,
+          prNumber: review.prNumber,
+          headSha: review.headSha,
+          status: review.status,
+          errorMessage: review.errorMessage,
+          comments: review._count.comments,
+          createdAt: review.createdAt,
+          updatedAt: review.updatedAt,
+        })),
+      });
+    } catch (error: any) {
+      console.error("❌ Fetch Reviews Error:", error.message);
+
+      res.status(500).json({
+        error: "Failed to fetch reviews",
+      });
+    }
+  }
+);
 
 export default router;
