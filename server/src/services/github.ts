@@ -7,9 +7,7 @@ export async function getOctokitForUser(userId: string) {
   });
 
   if (!user || !user.accessToken) {
-    throw new Error(
-      "User not found or missing GitHub access token"
-    );
+    throw new Error("User not found or missing GitHub access token");
   }
 
   const { Octokit } = await import("@octokit/rest");
@@ -19,20 +17,14 @@ export async function getOctokitForUser(userId: string) {
   });
 }
 
-export async function fetchUserRepositories(
-  userId: string
-) {
+export async function fetchUserRepositories(userId: string) {
   const octokit = await getOctokitForUser(userId);
 
-  const response = await octokit.request(
-    "GET /user/repos",
-    {
-      per_page: 100,
-      sort: "updated",
-      affiliation:
-        "owner,collaborator,organization_member",
-    }
-  );
+  const response = await octokit.request("GET /user/repos", {
+    per_page: 100,
+    sort: "updated",
+    affiliation: "owner,collaborator,organization_member",
+  });
 
   return response.data.map((repo) => ({
     githubRepoId: Number(repo.id),
@@ -100,6 +92,66 @@ export async function postPullRequestComment(
       repo,
       issue_number: pullNumber,
       body,
+    }
+  );
+
+  return response.data;
+}
+
+/**
+ * Fetch the complete Git tree of a repository branch.
+ * Used by the RAG indexing pipeline.
+ */
+export async function getRepositoryTree(
+  userId: string,
+  owner: string,
+  repo: string,
+  branch: string
+) {
+  const octokit = await getOctokitForUser(userId);
+
+  const branchResponse = await octokit.request(
+    "GET /repos/{owner}/{repo}/branches/{branch}",
+    {
+      owner,
+      repo,
+      branch,
+    }
+  );
+
+  const treeSha = branchResponse.data.commit.sha;
+
+  const treeResponse = await octokit.request(
+    "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
+    {
+      owner,
+      repo,
+      tree_sha: treeSha,
+      recursive: "1",
+    }
+  );
+
+  return treeResponse.data.tree;
+}
+
+/**
+ * Fetch the contents of a single repository file.
+ * Used by the RAG indexing pipeline.
+ */
+export async function getRepositoryFile(
+  userId: string,
+  owner: string,
+  repo: string,
+  filePath: string
+) {
+  const octokit = await getOctokitForUser(userId);
+
+  const response = await octokit.request(
+    "GET /repos/{owner}/{repo}/contents/{path}",
+    {
+      owner,
+      repo,
+      path: filePath,
     }
   );
 
