@@ -4,14 +4,14 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface GitHubLoginButtonProps {
-  href: string
+  href?: string
   label?: string
   size?: 'default' | 'sm' | 'lg'
   className?: string
 }
 
 export function GitHubLoginButton({
-  href,
+  href = 'http://localhost:4000/auth/github',
   label = 'Login with GitHub',
   size = 'lg',
   className,
@@ -19,7 +19,12 @@ export function GitHubLoginButton({
   return (
     <Link
       href={href}
-      className={cn(buttonVariants({ size }), 'gap-2 rounded-md', size === 'lg' && 'h-10 px-4', className)}
+      className={cn(
+        buttonVariants({ size }),
+        'gap-2 rounded-md',
+        size === 'lg' && 'h-10 px-4',
+        className,
+      )}
     >
       <GitHubMark className="size-4" />
       {label}

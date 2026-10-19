@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     'AI Code Reviewer automatically reviews GitHub pull requests using AI and relevant repository context, leaving line-level comments with severity.',
 }
 
-const LOGIN_HREF = '/dashboard'
+const LOGIN_HREF = 'http://localhost:4000/auth/github'
 const GITHUB_HREF = 'https://github.com'
 
 export default function LandingPage() {

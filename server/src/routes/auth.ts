@@ -12,7 +12,7 @@ const GITHUB_CALLBACK_URL =
 // 1. Start GitHub OAuth
 // GET /auth/github
 // ─────────────────────────────────────────────
-router.get("/github", (req: Request, res: Response) => {
+router.get("/github", (_req: Request, res: Response) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
 
   if (!clientId) {
@@ -30,7 +30,7 @@ router.get("/github", (req: Request, res: Response) => {
   const githubAuthUrl =
     `https://github.com/login/oauth/authorize?${params.toString()}`;
 
-  res.redirect(githubAuthUrl);
+  return res.redirect(githubAuthUrl);
 });
 
 // ─────────────────────────────────────────────
@@ -142,52 +142,9 @@ router.get(
       });
 
       // ───────────────────────────────────────
-      // Step F: Temporary success page
+      // Step F: Redirect to frontend dashboard
       // ───────────────────────────────────────
-      return res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>AI Code Reviewer - Login</title>
-          </head>
-
-          <body
-            style="
-              font-family: Arial, sans-serif;
-              text-align: center;
-              margin-top: 80px;
-            "
-          >
-            <h1>🎉 Login Successful!</h1>
-
-            <p>
-              Welcome,
-              <strong>${user.username}</strong>!
-            </p>
-
-            <p>
-              Your GitHub account has been connected successfully.
-            </p>
-
-            <p>
-              Your secure session cookie has been created.
-            </p>
-
-            <img
-              src="${user.avatarUrl}"
-              width="100"
-              height="100"
-              style="border-radius: 50%; margin-top: 20px;"
-            />
-
-            <p style="margin-top: 30px;">
-              <a href="/me">
-                Test protected /me route
-              </a>
-            </p>
-          </body>
-        </html>
-      `);
+      return res.redirect("http://localhost:3000/dashboard");
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         console.error(
@@ -204,5 +161,21 @@ router.get(
     }
   }
 );
+
+// ─────────────────────────────────────────────
+// 3. Logout
+// POST /auth/logout
+// ─────────────────────────────────────────────
+router.post("/logout", (_req: Request, res: Response) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  return res.json({
+    message: "Logged out successfully",
+  });
+});
 
 export default router;

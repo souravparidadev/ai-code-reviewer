@@ -7,12 +7,18 @@ import cookieParser from "cookie-parser";
 import prisma from "./lib/db";
 import authRoutes from "./routes/auth";
 import repoRoutes from "./routes/repos";
+import dashboardRoutes from "./routes/dashboard";
 import webhookRoutes from "./routes/webhook";
 import { protectRoute } from "./middleware/auth";
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 
 app.use(
   express.json({
@@ -24,13 +30,13 @@ app.use(
 
 app.use(cookieParser());
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.json({
     message: "AI Code Reviewer API is running",
   });
 });
 
-app.get("/health", (req, res) => {
+app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
     service: "ai-code-reviewer-api",
@@ -38,7 +44,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.get("/db-health", async (req, res) => {
+app.get("/db-health", async (_req, res) => {
   try {
     await prisma.$connect();
 
@@ -74,6 +80,9 @@ app.get("/me", protectRoute, (req, res) => {
 
 // Protected repository routes
 app.use("/api/repos", protectRoute, repoRoutes);
+
+// Protected dashboard routes
+app.use("/api/dashboard", protectRoute, dashboardRoutes);
 
 const PORT = process.env.PORT || 4000;
 
