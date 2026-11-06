@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 
 import { Worker } from "bullmq";
@@ -16,34 +17,11 @@ type TreeItem = {
 };
 
 const ALLOWED_EXTENSIONS = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-  ".py",
-  ".java",
-  ".c",
-  ".cpp",
-  ".h",
-  ".hpp",
-  ".cs",
-  ".go",
-  ".rs",
-  ".php",
-  ".rb",
-  ".swift",
-  ".kt",
-  ".kts",
-  ".sql",
-  ".html",
-  ".css",
-  ".scss",
-  ".json",
-  ".yaml",
-  ".yml",
-  ".md",
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+  ".py", ".java", ".c", ".cpp", ".h", ".hpp",
+  ".cs", ".go", ".rs", ".php", ".rb", ".swift",
+  ".kt", ".kts", ".sql", ".html", ".css", ".scss",
+  ".json", ".yaml", ".yml", ".md",
 ]);
 
 const EXCLUDED_DIRECTORIES = [
@@ -207,6 +185,7 @@ async function indexRepository(repositoryId: string) {
   console.log(`📁 Found ${files.length} indexable files`);
 
   let totalChunks = 0;
+  const failedFiles: string[] = [];
 
   for (const file of files) {
     if (!file.path) continue;
@@ -251,22 +230,22 @@ async function indexRepository(repositoryId: string) {
 
         const vectorId = `${repository.id}:${file.path}:${i}`;
 
-       await pineconeIndex.upsert({
-  records: [
-    {
-      id: vectorId,
-      values: embedding,
-      metadata: {
-        repoId: repository.id,
-        filePath: file.path,
-        text: chunk.text,
-        startLine: chunk.startLine,
-        endLine: chunk.endLine,
-        branch: repository.defaultBranch,
-      },
-    },
-  ],
-});
+        await pineconeIndex.upsert({
+          records: [
+            {
+              id: vectorId,
+              values: embedding,
+              metadata: {
+                repoId: repository.id,
+                filePath: file.path,
+                text: chunk.text,
+                startLine: chunk.startLine,
+                endLine: chunk.endLine,
+                branch: repository.defaultBranch,
+              },
+            },
+          ],
+        });
 
         totalChunks++;
 
@@ -279,12 +258,21 @@ async function indexRepository(repositoryId: string) {
         `❌ Failed to index ${file.path}:`,
         error?.message || error
       );
+
+      failedFiles.push(file.path);
     }
   }
 
   console.log(
     `🎉 Finished indexing ${repository.fullName}: ${totalChunks} chunks`
   );
+
+  if (failedFiles.length > 0) {
+    throw new Error(
+      `Indexing incomplete for ${repository.fullName}. ` +
+      `${failedFiles.length} files failed: ${failedFiles.join(", ")}`
+    );
+  }
 }
 
 const worker = new Worker(
